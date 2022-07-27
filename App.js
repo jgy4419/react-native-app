@@ -13,6 +13,7 @@ import {
   ScrollView,
   Alert
 } from 'react-native';
+import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { theme } from './color';
 import { AsyncStorage } from 'react-native';
 
@@ -23,10 +24,16 @@ export default function App() {
   const [text, setText] = useState("");
   const [toDos, setToDos] = useState({});
   const [date, setDate] = useState("");
+  const [uploadTime, setUploadTime] = useState(0);
+  const [editText, setEditText] = useState();
+  const [editTextId, setEditTextId] = useState(0);
+  const [editState, setEditState] = useState(false);
 
   useEffect(() => {
     loadToDos();
   }, [])
+
+  // 글 올린 시간 년/월/일 로 바꿔주기.
   const dateToStr = (date) => {
     let week = new Array('일', '월', '화', '수', '목', '금', '토');
     const localTime = date.toLocaleString();
@@ -35,12 +42,12 @@ export default function App() {
     let month = date.getMonth() + 1;
     let day = date.getDate();
     let dayName = week[date.getDay()];
-
     return year + '년 ' + month + '월 ' + day+'일 ' + dayName + '요일';
   }
   const travel = () => setWorking(false);
   const work = () => setWorking(true);
   // onChangeText가 실행되면 text를 받아서 text애 반영해준다.
+
   const onChangeText = payload => setText(payload);
   const saveToDos = async (toSave) => {
     // 현재 있는 toDos를 string으로 바꿔주고, await AsyncStorage.setItem을 해줄것이다.
@@ -64,13 +71,26 @@ export default function App() {
     }
     // 기존 toDos에 담겨 있던 content와 state에 새롭게 추가된 요소들을 결합해서 만들어주기.
     // key 값으로 date를 밀리초로 계산한 값으로 해주기.
-    const newToDos = {...toDos, [Date.now()]: {text, working}};
+    const newToDos = {...toDos, [Date.now()]: {text, working, uploadTime}};
     // ToDo에 무언가 추가하면 호출
     await setToDos(newToDos);
+    setUploadTime(dateToStr(new Date()));
     saveToDos(newToDos);
     setText("");
-    // alert(text);
   };
+
+  // 글 수정기능. (text 변경, 변경 시간 적용 시켜주기. + 변경 한 값을 제일 위로 보내주기.)
+  const openEditInput = (key) => {
+    alert(key); // key 값으로 수정할 text 넘어옴.
+    setEditState(true);
+  }
+
+  const onChangeEditText = payload => {
+    setEditText(payload);
+  };
+  const editTextComplete = () => {
+    setEditState(false);
+  }
 
   // 쓰레기통을 클릭하면, 삭제할 것인지 물어보고,
   const deleteTodo = async (id) => {
@@ -127,14 +147,44 @@ export default function App() {
             toDos[key].working === working ? (
               <View style={styles.toDoback}>
                 <View style={styles.toDo} key={key}>
-                  <Text style={styles.toDoText}>{toDos[key].text}</Text>
+                  <BouncyCheckbox
+                    size={25}
+                    fillColor="grey"
+                    // unfillColor="grey"
+                    iconStyle={{border: "blue"}}
+                    iconInnerStyle={{color: "grey"}}
+                    textStyle={{color: '#fff'}}
+                    text={toDos[key].text}
+                    style={{ display: editState ? 'none' : 'block'}}
+                  />
+                  {/* <Text style={styles.toDoText}>{toDos[key].text}</Text> */}
+                  {/* style={{ display: editState ? 'none' : 'block'}} */}
+                  <View style={{...styles.editBox, display: editState ? 'block' : 'none'}}>
+                    <TextInput
+                      placeholder={toDos[key].text}
+                      onChangeText={onChangeEditText}
+                      returnKeyType="done"
+                      // blurOnSubmit={editTextComplete(key)}
+                      onSubmitEditing={editTextComplete}
+                      style={styles.editText}
+                      returnKeyType="done"
+                    />
+                    <TouchableOpacity style={styles.editSuccessBtn} onPress={editTextComplete}>
+                      <Text style={styles.editSuccessText}>수정완료</Text>
+                    </TouchableOpacity>
+                  </View>
                   {/* 쓰레기통 부분. 클릭하면 deleteTodo 함수에 클릭한 리스트의 key 값을 인자로 보내면서 실행. */}
-                  <TouchableOpacity onPress={() => deleteTodo(key)}>
-                    <Fontisto style={styles.trash} name="trash" size={18} color={"grey"}></Fontisto>
-                  </TouchableOpacity>
+                  <View>
+                    <TouchableOpacity style={{...styles.editBtn, display: editState ? 'none' : 'block'}} onPress={() => openEditInput(key)}>
+                      <Text style={styles.editBtnText}>수정</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => deleteTodo(key)}>
+                      <Fontisto style={styles.trash} name="trash" size={18} color={"grey"}></Fontisto>
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <View>
-                  <Text style={styles.toDoDate}>날짜 : {Date.now()}</Text>
+                  <Text style={styles.toDoDate}>{toDos[key].uploadTime}</Text>
                 </View>
               </View>) : null)
           }
@@ -187,10 +237,45 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   trash: {
+    top: 10,
     paddingTop: 20,
   },
   toDoDate: {
     color: '#d3d3d3',
     paddingVertical: 10,
+  },
+  editBox: {
+    flexDirection: 'row'
+  },
+  editText: {
+    width: 100,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    fontSize: 16
+  },
+  editBtn: {
+    top: 10,
+    width: 50,
+    padding: 5,
+    borderRadius: 10,
+    backgroundColor: 'grey'
+  },
+  editBtnText: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: 'lightgrey'
+  },
+  editSuccessBtn: {
+    left: 10,
+    width: 70,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: 'grey'
+  },
+  editSuccessText: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: 'lightgrey'
   }
 });
