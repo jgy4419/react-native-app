@@ -1,6 +1,6 @@
 // 수정기능, 완료기능 추가해보기.
 
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useRef} from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {Fontisto} from '@expo/vector-icons';
 // TouchableOpacity는 누르는 이벤트를 listen할 준비가 된 view라고 할 수 있다. (다른 종류들도 있음.)
@@ -29,6 +29,7 @@ export default function App() {
   const [editTextId, setEditTextId] = useState(0);
   const [editState, setEditState] = useState(false);
 
+  const setComponent = useRef(null);
   useEffect(() => {
     loadToDos();
   }, [])
@@ -81,7 +82,8 @@ export default function App() {
 
   // 글 수정기능. (text 변경, 변경 시간 적용 시켜주기. + 변경 한 값을 제일 위로 보내주기.)
   const openEditInput = (key) => {
-    alert(key); // key 값으로 수정할 text 넘어옴.
+    // alert(key); // key 값으로 수정할 text 넘어옴.
+    setEditTextId(key)
     setEditState(true);
   }
 
@@ -89,6 +91,18 @@ export default function App() {
     setEditText(payload);
   };
   const editTextComplete = () => {
+    Object.keys(toDos).forEach(list => {
+      if(list === editTextId && editText !== ''){
+        alert('변경되었습니다!');
+        let changeDate = dateToStr(new Date());
+        toDos[list].text = editText;
+        toDos[list].uploadTime = changeDate;
+        setEditText('');
+      }else{
+        toDos[list].text = toDos[list].text;
+        toDos[list].uploadTime = toDos[list].uploadTime;
+      }
+    })
     setEditState(false);
   }
 
@@ -146,7 +160,7 @@ export default function App() {
             // 즉, 만약 working이 true이고, state의 working도 true라면 toDos를 보게된다. (모드에 따른 toDos를 볼 수 있음.)
             toDos[key].working === working ? (
               <View style={styles.toDoback}>
-                <View style={styles.toDo} key={key}>
+                <View ref={setComponent} style={styles.toDo} key={key}>
                   <BouncyCheckbox
                     size={25}
                     fillColor="grey"
@@ -179,7 +193,7 @@ export default function App() {
                       <Text style={styles.editBtnText}>수정</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => deleteTodo(key)}>
-                      <Fontisto style={styles.trash} name="trash" size={18} color={"grey"}></Fontisto>
+                      <Fontisto style={{...styles.trash, top: editState ? 0 : 10}} name="trash" size={18} color={"grey"}></Fontisto>
                     </TouchableOpacity>
                   </View>
                 </View>
